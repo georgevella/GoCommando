@@ -25,11 +25,45 @@ namespace GoCommando.Tests
             Assert.That(bimseInstance.Switch, Is.EqualTo("value2"));
         }
 
+        [TestCase("-switch:value2 -switch:value1")]
+        [Test]
+        public void X(string args)
+        {
+            var settings = new Settings();
+            var invoker = new CommandInvoker("bimse", settings, new Bimse2());
+            var arguments = Go.Parse(args.Split(' '), settings);
+
+            invoker.Invoke(arguments.Switches, EnvironmentSettings.Empty);
+
+            var bimseInstance = (Bimse2)invoker.CommandInstance;
+
+            Assert.That(bimseInstance.List.Count(), Is.EqualTo(2));
+            Assert.That(bimseInstance.List.Contains("value2"), Is.EqualTo(true));
+            Assert.That(bimseInstance.List.Contains("value1"), Is.EqualTo(true));
+        }
+
+        [TestCase("-flag -switch:value1")]
+        [Test]
+        public void CanCorrectlyHandleFlags()
+        {
+
+        }
+
         [Command("bimse")]
         class Bimse : ICommand
         {
             [Parameter("switch")]
             public string Switch { get; set; }
+
+            public void Run()
+            {
+            }
+        }
+        [Command("bimse")]
+        class Bimse2 : ICommand
+        {
+            [Parameter("switch")]
+            public IEnumerable<string> List { get; set; }
 
             public void Run()
             {

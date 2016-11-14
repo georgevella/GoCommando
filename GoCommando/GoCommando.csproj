@@ -48,6 +48,8 @@
     <Compile Include="DescriptionAttribute.cs" />
     <Compile Include="ExampleAttribute.cs" />
     <Compile Include="ExitCodeException.cs" />
+    <Compile Include="Extensions\PropertyInfoExtensions.cs" />
+    <Compile Include="Extensions\TypeExtensions.cs" />
     <Compile Include="ICommand.cs" />
     <Compile Include="ICommandFactory.cs" />
     <Compile Include="Internals\Arguments.cs" />

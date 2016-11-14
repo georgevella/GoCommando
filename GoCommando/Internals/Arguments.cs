@@ -4,30 +4,24 @@ using System.Linq;
 
 namespace GoCommando.Internals
 {
-    class Arguments
+    internal class Arguments
     {
         readonly Settings _settings;
+        private readonly Dictionary<string, Switch> _switches;
+        private readonly List<KeyValuePair<string, string>> _rawSwitchList;
 
-        public Arguments(string command, IEnumerable<Switch> switches, Settings settings)
+        public Arguments(string command, IEnumerable<KeyValuePair<string, string>> rawSwitchList, Settings settings)
         {
             _settings = settings;
-            var switchList = switches.ToList();
-            var duplicateSwitchKeys = switchList.GroupBy(s => s.Key).Where(g => g.Count() > 1).ToList();
+            _rawSwitchList = rawSwitchList.ToList();
 
-            if (duplicateSwitchKeys.Any())
-            {
-                var dupes = string.Join(", ", duplicateSwitchKeys.Select(g => $"{settings.SwitchPrefix}{g.Key}"));
-
-                throw new GoCommandoException($"The following switches have been specified more than once: {dupes}");
-            }
+            _switches = _rawSwitchList.GroupBy(s => s.Key, s => s.Value)
+                .ToDictionary(x => x.Key, x => new Switch(x.Key, x.Where(s => !string.IsNullOrEmpty(s))));
 
             Command = command;
-            Switches = switchList;
         }
 
         public string Command { get; }
-
-        public IEnumerable<Switch> Switches { get; }
 
         public TValue Get<TValue>(string key)
         {
@@ -37,14 +31,16 @@ namespace GoCommando.Internals
             {
                 if (desiredType == typeof(bool))
                 {
-                    return (TValue)Convert.ChangeType(Switches.Any(s => s.Key == key), desiredType);
+                    return (TValue)Convert.ChangeType(_switches.Any(s => s.Key == key), desiredType);
                 }
 
-                var relevantSwitch = Switches.FirstOrDefault(s => s.Key == key);
+                Switch relevantSwitch = null;
 
-                if (relevantSwitch != null)
+                if (_switches.TryGetValue(key, out relevantSwitch))
                 {
-                    return (TValue)Convert.ChangeType(relevantSwitch.Value, desiredType);
+                    // TODO: this ought to be handled better
+                    //return (TValue)Convert.ChangeType(relevantSwitch.Value, desiredType);
+                    return (TValue)Convert.ChangeType(relevantSwitch.Values.FirstOrDefault(), desiredType);
                 }
 
                 throw new GoCommandoException($"Could not find switch '{key}'");
@@ -52,13 +48,36 @@ namespace GoCommando.Internals
             catch (Exception exception)
             {
                 throw new FormatException($"Could not get switch '{key}' as a {desiredType}", exception);
-            }        }
-
-        public override string ToString()
-        {
-            return $@"{Command}
-
-{string.Join(Environment.NewLine, Switches.Select(s => "    " + s))}";
+            }
         }
+
+        public IEnumerable<Switch> Switches => _switches.Values;
+
+        public Switch GetSwitch(string key)
+        {
+            return _switches.ContainsKey(key) ? _switches[key] : null;
+        }
+
+        //        public override string ToString()
+        //        {
+        //            return $@"{Command}
+
+        //{string.Join(Environment.NewLine, _rawSwitchList.Select(s => "    " + s.Key))}";
+        //        }
+
+        /// <summary>
+        ///     Returns all arguments that are declared multiple times on the command line.
+        /// </summary>
+        //public IEnumerable<string> GetMultiValueArguments()
+        //{
+        //    return _switches.Where(item => item.Value.IsMultiValue).Select(x => x.Key).ToList();
+        //}
+
+        public bool IsSwitchSet(string switchIdentifier)
+        {
+            return _switches.ContainsKey(switchIdentifier);
+        }
+
+        public int Count => _switches.Count;
     }
 }

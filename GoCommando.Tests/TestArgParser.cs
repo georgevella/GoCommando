@@ -52,7 +52,7 @@ c:\Windows\Microsoft.NET\Framework
             Console.WriteLine(arguments);
 
             Assert.That(arguments.Command, Is.EqualTo("run"));
-            Assert.That(arguments.Switches.Count(), Is.EqualTo(4));
+            Assert.That(arguments.Count, Is.EqualTo(4));
             Assert.That(arguments.Get<string>("path"), Is.EqualTo(@"c:\Program Files"));
             Assert.That(arguments.Get<string>("dir"), Is.EqualTo(@"c:\Windows\Microsoft.NET\Framework"));
 
@@ -68,9 +68,9 @@ c:\Windows\Microsoft.NET\Framework
         {
             var arguments = Parse(new[] { alias });
 
-            Assert.That(arguments.Switches.Count(), Is.EqualTo(1));
-            Assert.That(arguments.Switches.Single().Key, Is.EqualTo("path"));
-            Assert.That(arguments.Switches.Single().Value, Is.EqualTo(@"c:\temp"));
+            Assert.That(arguments.Count, Is.EqualTo(1));
+            Assert.That(arguments.IsSwitchSet("path"), Is.EqualTo(true));
+            Assert.That(arguments.GetSwitch("path").Values.FirstOrDefault(), Is.EqualTo(@"c:\temp"));
         }
 
         [TestCase(@"-n23")]
@@ -78,9 +78,23 @@ c:\Windows\Microsoft.NET\Framework
         {
             var arguments = Parse(new[] { alias });
 
-            Assert.That(arguments.Switches.Count(), Is.EqualTo(1));
-            Assert.That(arguments.Switches.Single().Key, Is.EqualTo("n"));
-            Assert.That(arguments.Switches.Single().Value, Is.EqualTo(@"23"));
+            Assert.That(arguments.Count, Is.EqualTo(1));
+            Assert.That(arguments.IsSwitchSet("n"), Is.EqualTo(true));
+            Assert.That(arguments.GetSwitch("n").Values.FirstOrDefault(), Is.EqualTo(@"23"));
+        }
+
+        [TestCase(@"-switch abc -flag")]
+        public void SupportsFlags(string args)
+        {
+            var arguments = Parse(args.Split(' '));
+
+            Assert.That(arguments.Count, Is.EqualTo(2));
+            Assert.That(arguments.IsSwitchSet("flag"), Is.EqualTo(true));
+
+            var s = arguments.GetSwitch("flag");
+            Assert.That(s.IsFlag, Is.EqualTo(true));
+            Assert.That(s.IsMultiValue, Is.EqualTo(false));
+            Assert.That(s.Values.Count(), Is.EqualTo(0));
         }
 
         static Arguments Parse(IEnumerable<string> args)

@@ -14,7 +14,7 @@ namespace GoCommando
     public static class Go
     {
         /// <summary>
-        /// Call this method from your <code>Main</code> method if you want to supply a custom <see cref="ICommandFactory"/> which 
+        /// Call this method from your <code>Main</code> method if you want to supply a custom <see cref="ICommandFactory"/> which
         /// will be used to create command instances
         /// </summary>
         public static void Run<TCommandFactory>() where TCommandFactory : ICommandFactory, new()
@@ -96,16 +96,15 @@ namespace GoCommando
             var arguments = Parse(args, settings);
             var commandTypes = GetCommands(commandFactory, settings);
 
-            var helpSwitch = arguments.Switches.FirstOrDefault(s => s.Key == "?")
-                             ?? arguments.Switches.FirstOrDefault(s => s.Key == "help");
+            var helpSwitch = arguments.GetSwitch("?") ?? arguments.GetSwitch("help");
 
             if (helpSwitch != null)
             {
                 var exe = Assembly.GetEntryAssembly().GetName().Name + ".exe";
 
-                if (helpSwitch.Value != null)
+                if (!helpSwitch.IsFlag)
                 {
-                    var command = commandTypes.FirstOrDefault(c => c.Command == helpSwitch.Value);
+                    var command = commandTypes.FirstOrDefault(c => c.Command == helpSwitch.Values.FirstOrDefault());
 
                     if (command != null)
                     {
@@ -135,7 +134,7 @@ where <args> can consist of the following parameters:
                         return;
                     }
 
-                    throw new GoCommandoException($"Unknown command: '{helpSwitch.Value}'");
+                    throw new GoCommandoException($"Unknown command: '{helpSwitch.Values.FirstOrDefault()}'");
                 }
 
                 var availableCommands = GetAvailableCommandsHelpText(commandTypes);
@@ -292,7 +291,10 @@ to get help for a command.
         {
             var list = args.ToList();
 
-            if (!list.Any()) return new Arguments(null, Enumerable.Empty<Switch>(), settings);
+            if (!list.Any())
+            {
+                return new Arguments(null, Enumerable.Empty<KeyValuePair<string, string>>(), settings);
+            }
 
             var first = list.First();
 
@@ -310,7 +312,7 @@ to get help for a command.
                 switchArgs = list.Skip(1).ToList();
             }
 
-            var switches = new List<Switch>();
+            var switches = new List<KeyValuePair<string, string>>();
 
             string key = null;
 
@@ -320,7 +322,7 @@ to get help for a command.
                 {
                     if (key != null)
                     {
-                        switches.Add(Switch.Flag(key));
+                        switches.Add(new KeyValuePair<string, string>(key, null));
                     }
 
                     key = arg.Substring(settings.SwitchPrefix.Length);
@@ -332,7 +334,7 @@ to get help for a command.
                         {
                             throw new ApplicationException($"Expected to get key-value-pair from key '{key}'");
                         }
-                        switches.Add(Switch.KeyValue(keyAndValue.Value.Key, keyAndValue.Value.Value));
+                        switches.Add(new KeyValuePair<string, string>(keyAndValue.Value.Key, keyAndValue.Value.Value));
                         key = null;
                     }
 
@@ -346,14 +348,14 @@ to get help for a command.
                     throw new GoCommandoException($"Got command line argument '{value}' without a switch in front of it - please specify switches like this: '{settings.SwitchPrefix}switch some-value'");
                 }
 
-                switches.Add(Switch.KeyValue(key, value));
+                switches.Add(new KeyValuePair<string, string>(key, value));
 
                 key = null;
             }
 
             if (key != null)
             {
-                switches.Add(Switch.Flag(key));
+                switches.Add(new KeyValuePair<string, string>(key, null));
             }
 
             return new Arguments(command, switches, settings);

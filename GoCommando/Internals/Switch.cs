@@ -1,27 +1,45 @@
 ﻿// ReSharper disable LoopCanBeConvertedToQuery
+
+using System.Collections.Generic;
+using System.Linq;
+
 namespace GoCommando.Internals
 {
-    class Switch
+    internal class Switch
     {
-        static readonly char[] AcceptedQuoteCharacters = { '"', '\'' };
+        private static readonly char[] AcceptedQuoteCharacters = { '"', '\'' };
 
-        public static Switch KeyValue(string key, string value)
+        internal Switch(string key, string value)
         {
-            return new Switch(key, value);
+            Name = key;
+
+            IsMultiValue = false;
+            IsFlag = string.IsNullOrEmpty(value);
+
+            Values = IsFlag ? new string[] { } : new[] { Unquote(value) };
+
         }
 
-        public static Switch Flag(string key)
+        internal Switch(string key, IEnumerable<string> values)
         {
-            return new Switch(key, null);
+            Name = key;
+
+            var unquotedValues = values.Select(Unquote).ToArray();
+            IsFlag = unquotedValues.Length == 0;
+
+            if (IsFlag)
+                return;
+            IsMultiValue = unquotedValues.Length > 1;
+            Values = unquotedValues;
         }
 
-        Switch(string key, string value)
-        {
-            Key = key;
-            Value = Unquote(value);
-        }
+        public bool IsFlag { get; }
 
-        static string Unquote(string value)
+        public string Name { get; }
+        public IEnumerable<string> Values { get; } = new string[] { };
+        public bool IsMultiValue { get; }
+
+        private static string Unquote(string value)
         {
             if (value == null) return null;
 
@@ -34,22 +52,10 @@ namespace GoCommando.Internals
 
                 if (value.StartsWith(quote)
                     && value.EndsWith(quote))
-                {
                     return value.Substring(1, value.Length - 2);
-                }
             }
 
             return value;
-        }
-
-        public string Key { get; }
-        public string Value { get; }
-
-        public override string ToString()
-        {
-            return Value == null
-                ? Key
-                : $"{Key} = {Value}";
         }
     }
 }
